@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Download, Upload, FileSpreadsheet, Sparkles, ClipboardList, Github } from "lucide-react";
+const API = import.meta.env.VITE_API_URL;
 
 // === Minimal shadcn-like components (inline for single-file demo) ===
 const Button = ({ className = "", children, ...props }) => (
@@ -173,7 +174,7 @@ const enrich = async () => {
   try {
     const list = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const payload = { items: list.map(cve => ({ cve_id: cve })) };
-    const res = await fetch("http://localhost:8000/enrich", {
+    const res = await fetch(`${API}/enrich`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
