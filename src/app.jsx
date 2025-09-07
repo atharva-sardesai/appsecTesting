@@ -3,14 +3,18 @@ import { Download, Upload, FileSpreadsheet, Sparkles, ClipboardList, Github } fr
 const API = import.meta.env.VITE_API_URL;
 
 // Backend → UI mapping (Brief_Description, Remediation_Links → table fields)
+// Map backend keys to the table fields we already render
 function normalizeRows(rows, owner = "") {
-  return (rows || []).map(r => ({
+  return (rows || []).map((r) => ({
     ...r,
-    Description_Short: r.Brief_Description || r.Description_Short || "",
-    Remediation_Steps: r.Remediation_Links || r.Remediation_Steps || "",
+    // Use the ChatGPT brief as the Summary shown in the table
+    Description_Short: r.Brief_Description || "",
+    // Show remediation guidance as links (backend sends pipe-separated)
+    Remediation_Steps: r.Remediation_Links || "",
     Owner_Suggested: owner || r.Owner_Suggested || "",
   }));
 }
+
 
 
 // === Minimal shadcn-like components (inline for single-file demo) ===
@@ -193,17 +197,13 @@ const enrich = async () => {
       return;
     }
     if (!API) {
-      alert("VITE_API_URL is not set in your Netlify env.");
+      alert("VITE_API_URL is not set.");
       return;
     }
 
     const res = await fetch(`${API}/enrich`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // If you enabled API key on server, uncomment:
-        // "X-API-Key": import.meta.env.VITE_API_KEY || ""
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cves }),
     });
 
@@ -225,22 +225,19 @@ const enrich = async () => {
 
 
 
+
 const onUploadCSV = async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
     const txt = await file.text();
-    const parsed = parseCSV(txt); // expects a header named CVE_ID
+    const parsed = parseCSV(txt); // needs a column named CVE_ID
     const cves = Array.from(
       new Set(parsed.map((r) => (r.CVE_ID || "").trim()).filter(Boolean))
     );
 
     if (!cves.length) {
-      alert("No CVE_ID values found in the CSV (need a 'CVE_ID' column).");
-      return;
-    }
-    if (!API) {
-      alert("VITE_API_URL is not set in your Netlify env.");
+      alert("No CVE_ID values found in CSV.");
       return;
     }
 
@@ -262,9 +259,10 @@ const onUploadCSV = async (e) => {
     console.error(e);
     alert(e.message || "Failed to enrich CVEs from CSV");
   } finally {
-    if (fileRef.current) fileRef.current.value = ""; // allow re-upload same file
+    if (fileRef.current) fileRef.current.value = "";
   }
 };
+
 
 
   const totalHigh = useMemo(() => rows.filter((r) => r.Priority_Score >= 0.8).length, [rows]);
@@ -373,7 +371,26 @@ const onUploadCSV = async (e) => {
                       <td className="px-3 py-3">{r.Version}</td>
                       <td className="px-3 py-3">{r.Detected_On_Asset}</td>
                       <td className="px-3 py-3 max-w-[28rem]"><p className="line-clamp-4 leading-5 text-zinc-700 dark:text-zinc-300">{r.Description_Short}</p></td>
-                      <td className="px-3 py-3 max-w-[32rem]"><p className="line-clamp-4 leading-5 text-zinc-700 dark:text-zinc-300">{r.Remediation_Steps}</p></td>
+                      <td className="px-3 py-3 max-w-[32rem]">
+  <div className="flex flex-wrap gap-2">
+    {(r.Remediation_Steps || "")
+      .split(" | ")
+      .filter(Boolean)
+      .slice(0, 4)
+      .map((u) => (
+        <a
+          key={u}
+          href={u}
+          target="_blank"
+          className="rounded-full px-2 py-1 text-xs ring-1 ring-indigo-300/40 hover:ring-indigo-400 text-indigo-300 hover:text-indigo-200 truncate max-w-[16rem]"
+          title={u}
+        >
+          {u.replace(/^https?:\/\/(www\.)?/, "")}
+        </a>
+      ))}
+  </div>
+</td>
+
                       <td className="px-3 py-3">
                         {r.Patch_URL ? (
                           <a href={r.Patch_URL} target="_blank" className="text-indigo-600 hover:underline">Patch</a>
