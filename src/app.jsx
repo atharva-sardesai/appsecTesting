@@ -9,13 +9,15 @@ const API = import.meta.env.VITE_API_URL;
 function normalizeRows(rows, owner = "") {
   return (rows || []).map((r) => ({
     ...r,
-    // Force the Summary cell to show the ChatGPT brief
-    Description_Short: r.Brief_Description || "",
-    // Remediation links come pipe-separated from backend
+    // Force Summary to show AI brief
+    Description_Short: r.AI_Brief || r.Brief_Description || "",
+    // Keep remediation links as chips
     Remediation_Steps: r.Remediation_Links || "",
+    // Keep owner overlay
     Owner_Suggested: owner || r.Owner_Suggested || "",
   }));
 }
+
 
 // Super-minimal CSV parser (no quoted cells handling)
 function parseCSV(content) {
@@ -280,6 +282,8 @@ export default function App() {
                       "Version",
                       "Asset",
                       "AI Brief",
+                      "Impact",
+                      "Affected",
                       "Remediation",
                       "Patch",
                       "Refs",
@@ -314,67 +318,39 @@ export default function App() {
                       <td className="px-3 py-3">{r.Version || "—"}</td>
                       {/* Asset */}
                       <td className="px-3 py-3">{r.Detected_On_Asset || "—"}</td>
-                      {/* AI Brief (from ChatGPT) */}
+                      {/* AI Brief */}
                       <td className="px-3 py-3 max-w-[28rem]">
-                        <p className="leading-5 text-zinc-300">
-                          {r.Brief_Description || r.Description_Short || "—"}
-                        </p>
-                      </td>
-                      {/* Remediation links */}
-                      <td className="px-3 py-3 max-w-[32rem]">
-                        <div className="flex flex-wrap gap-2">
-                          {(r.Remediation_Steps || "")
-                            .split(" | ")
-                            .filter(Boolean)
-                            .slice(0, 4)
-                            .map((u) => (
-                              <a
-                                key={u}
-                                href={u}
-                                target="_blank"
-                                rel="noreferrer noopener"
-                                className="rounded-full px-2 py-1 text-xs ring-1 ring-indigo-300/40 hover:ring-indigo-400 text-indigo-300 hover:text-indigo-200 truncate max-w-[16rem]"
-                                title={u}
-                              >
-                                {u.replace(/^https?:\/\/(www\.)?/, "")}
-                              </a>
-                            ))}
+                        <div className="flex items-start gap-2">
+                          {r.LLM_Used ? (
+                            <span className="mt-0.5 inline-flex items-center rounded-full bg-indigo-500/10 text-indigo-300 px-2 py-0.5 text-[10px] ring-1 ring-indigo-500/30">
+                              AI
+                            </span>
+                          ) : (
+                            <span className="mt-0.5 inline-flex items-center rounded-full bg-zinc-500/10 text-zinc-300 px-2 py-0.5 text-[10px] ring-1 ring-zinc-500/30">
+                              NVD
+                            </span>
+                          )}
+                          <p className="leading-5 text-zinc-300">
+                            {r.AI_Brief || r.Brief_Description || r.Description_Short || "—"}
+                          </p>
                         </div>
                       </td>
-                      {/* Patch */}
-                      <td className="px-3 py-3">
-                        {r.Patch_URL ? (
-                          <a
-                            href={r.Patch_URL}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="text-indigo-400 hover:underline"
-                          >
-                            Patch
-                          </a>
-                        ) : (
-                          <span className="text-zinc-500">—</span>
-                        )}
-                      </td>
-                      {/* Refs */}
+
+                      {/* Impact */}
                       <td className="px-3 py-3 max-w-[22rem]">
-                        {(r.References || "")
-                          .split(" | ")
-                          .filter(Boolean)
-                          .slice(0, 3)
-                          .map((u) => (
-                            <div key={u}>
-                              <a
-                                href={u}
-                                target="_blank"
-                                rel="noreferrer noopener"
-                                className="text-indigo-400 hover:underline break-all"
-                              >
-                                {u}
-                              </a>
-                            </div>
-                          ))}
+                        <p className="leading-5 text-zinc-300">{r.AI_Impact || "—"}</p>
                       </td>
+
+                      {/* Affected */}
+                      <td className="px-3 py-3 max-w-[20rem]">
+                        <p className="leading-5 text-zinc-300">{r.AI_Affected || "—"}</p>
+                      </td>
+
+                      {/* Remediation (AI bullets, not the links) */}
+                      <td className="px-3 py-3 max-w-[28rem]">
+                        <p className="leading-5 text-zinc-300">{r.AI_Remediation || "—"}</p>
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>
