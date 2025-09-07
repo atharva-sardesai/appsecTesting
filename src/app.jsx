@@ -367,9 +367,6 @@ const onUploadCSV = async (e) => {
                       <td className="px-3 py-3">{r.CVSS_Base}</td>
                       <td className="px-3 py-3">{r.EPSS}</td>
                       <td className="px-3 py-3">{r.Exploited_in_Wild}</td>
-                      <td className="px-3 py-3 whitespace-nowrap">{r.Affected_Product}</td>
-                      <td className="px-3 py-3">{r.Version}</td>
-                      <td className="px-3 py-3">{r.Detected_On_Asset}</td>
                       <td className="px-3 py-3 max-w-[28rem]"><p className="line-clamp-4 leading-5 text-zinc-700 dark:text-zinc-300">{r.Description_Short}</p></td>
                       <td className="px-3 py-3 max-w-[32rem]">
   <div className="flex flex-wrap gap-2">
