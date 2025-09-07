@@ -361,48 +361,102 @@ const onUploadCSV = async (e) => {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.CVE_ID + r.Asset} className="border-b border-zinc-100/70 dark:border-zinc-800/70 align-top">
-                      <td className="px-3 py-3"><Tag tone={priorityColor(r.Priority_Score)}>{r.Priority_Score}</Tag></td>
-                      <td className="px-3 py-3 font-medium">{r.CVE_ID}</td>
-                      <td className="px-3 py-3">{r.CVSS_Base}</td>
-                      <td className="px-3 py-3">{r.EPSS}</td>
-                      <td className="px-3 py-3">{r.Exploited_in_Wild}</td>
-                      <td className="px-3 py-3 max-w-[28rem]"><p className="line-clamp-4 leading-5 text-zinc-700 dark:text-zinc-300">{r.Description_Short}</p></td>
-                      <td className="px-3 py-3 max-w-[32rem]">
-  <div className="flex flex-wrap gap-2">
-    {(r.Remediation_Steps || "")
+                    <tr
+  key={r.CVE_ID + (r.Detected_On_Asset || "")}
+  className="border-b border-zinc-100/70 dark:border-zinc-800/70 align-top"
+>
+  {/* Priority */}
+  <td className="px-3 py-3">
+    <Tag tone={priorityColor(r.Priority_Score)}>{r.Priority_Score}</Tag>
+  </td>
+
+  {/* CVE */}
+  <td className="px-3 py-3 font-medium">{r.CVE_ID}</td>
+
+  {/* CVSS */}
+  <td className="px-3 py-3">{r.CVSS_Base}</td>
+
+  {/* EPSS */}
+  <td className="px-3 py-3">{r.EPSS}</td>
+
+  {/* KEV */}
+  <td className="px-3 py-3">{r.Exploited_in_Wild}</td>
+
+  {/* Product */}
+  <td className="px-3 py-3 whitespace-nowrap">{r.Affected_Product || "—"}</td>
+
+  {/* Version */}
+  <td className="px-3 py-3">{r.Version || "—"}</td>
+
+  {/* Asset */}
+  <td className="px-3 py-3">{r.Detected_On_Asset || "—"}</td>
+
+  {/* Summary (AI brief) */}
+  <td className="px-3 py-3 max-w-[28rem]">
+    <p className="line-clamp-4 leading-5 text-zinc-300">
+      {r.Brief_Description || r.Description_Short || "—"}
+    </p>
+  </td>
+
+  {/* Remediation (links as chips) */}
+  <td className="px-3 py-3 max-w-[32rem]">
+    <div className="flex flex-wrap gap-2">
+      {(r.Remediation_Steps || "")
+        .split(" | ")
+        .filter(Boolean)
+        .slice(0, 4)
+        .map((u) => (
+          <a
+            key={u}
+            href={u}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="rounded-full px-2 py-1 text-xs ring-1 ring-indigo-300/40 hover:ring-indigo-400 text-indigo-300 hover:text-indigo-200 truncate max-w-[16rem]"
+            title={u}
+          >
+            {u.replace(/^https?:\/\/(www\.)?/, "")}
+          </a>
+        ))}
+    </div>
+  </td>
+
+  {/* Patch */}
+  <td className="px-3 py-3">
+    {r.Patch_URL ? (
+      <a
+        href={r.Patch_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="text-indigo-400 hover:underline"
+      >
+        Patch
+      </a>
+    ) : (
+      <span className="text-zinc-500">—</span>
+    )}
+  </td>
+
+  {/* Refs */}
+  <td className="px-3 py-3 max-w-[22rem]">
+    {(r.References || "")
       .split(" | ")
       .filter(Boolean)
-      .slice(0, 4)
+      .slice(0, 3)
       .map((u) => (
-        <a
-          key={u}
-          href={u}
-          target="_blank"
-          className="rounded-full px-2 py-1 text-xs ring-1 ring-indigo-300/40 hover:ring-indigo-400 text-indigo-300 hover:text-indigo-200 truncate max-w-[16rem]"
-          title={u}
-        >
-          {u.replace(/^https?:\/\/(www\.)?/, "")}
-        </a>
+        <div key={u}>
+          <a
+            href={u}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-indigo-400 hover:underline break-all"
+          >
+            {u}
+          </a>
+        </div>
       ))}
-  </div>
-</td>
+  </td>
+</tr>
 
-                      <td className="px-3 py-3">
-                        {r.Patch_URL ? (
-                          <a href={r.Patch_URL} target="_blank" className="text-indigo-600 hover:underline">Patch</a>
-                        ) : (
-                          <span className="text-zinc-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 max-w-[22rem]">
-                        {r.References?.split(" | ").slice(0,3).map((u) => (
-                          <div key={u}>
-                            <a href={u} target="_blank" className="text-indigo-600 hover:underline break-all">{u}</a>
-                          </div>
-                        ))}
-                      </td>
-                    </tr>
                   ))}
                 </tbody>
               </table>
