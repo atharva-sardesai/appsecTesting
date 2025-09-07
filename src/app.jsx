@@ -2,6 +2,17 @@ import React, { useMemo, useRef, useState } from "react";
 import { Download, Upload, FileSpreadsheet, Sparkles, ClipboardList, Github } from "lucide-react";
 const API = import.meta.env.VITE_API_URL;
 
+// Backend → UI mapping (Brief_Description, Remediation_Links → table fields)
+function normalizeRows(rows, owner = "") {
+  return (rows || []).map(r => ({
+    ...r,
+    Description_Short: r.Brief_Description || r.Description_Short || "",
+    Remediation_Steps: r.Remediation_Links || r.Remediation_Steps || "",
+    Owner_Suggested: owner || r.Owner_Suggested || "",
+  }));
+}
+
+
 // === Minimal shadcn-like components (inline for single-file demo) ===
 const Button = ({ className = "", children, ...props }) => (
   <button
@@ -172,35 +183,89 @@ export default function App() {
 const enrich = async () => {
   setLoading(true);
   try {
-    const list = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const payload = { items: list.map(cve => ({ cve_id: cve })) };
+    const cves = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (!cves.length) {
+      alert("Please paste at least one CVE (e.g., CVE-2021-44228).");
+      return;
+    }
+    if (!API) {
+      alert("VITE_API_URL is not set in your Netlify env.");
+      return;
+    }
+
     const res = await fetch(`${API}/enrich`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        // If you enabled API key on server, uncomment:
+        // "X-API-Key": import.meta.env.VITE_API_KEY || ""
+      },
+      body: JSON.stringify({ cves }),
     });
-    const j = await res.json();
-    const enriched = j.rows || [];
-    if (owner) enriched.forEach(r => r.Owner_Suggested = owner);
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`Backend error ${res.status}: ${t || res.statusText}`);
+    }
+
+    const data = await res.json();
+    const enriched = normalizeRows(data.rows, owner);
     setRows(enriched);
-  } finally { setLoading(false); }
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Failed to enrich CVEs");
+  } finally {
+    setLoading(false);
+  }
 };
 
 
-  const onUploadCSV = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const data = parseCSV(text); // Expect headers: CVE_ID, Asset, ProductOrLib, Version
-    const enriched = data.map((r) =>
-      mockEnrich(r.CVE_ID, {
-        asset: r.Asset,
-        product: r.ProductOrLib,
-        version: r.Version,
-      })
+
+const onUploadCSV = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const txt = await file.text();
+    const parsed = parseCSV(txt); // expects a header named CVE_ID
+    const cves = Array.from(
+      new Set(parsed.map((r) => (r.CVE_ID || "").trim()).filter(Boolean))
     );
+
+    if (!cves.length) {
+      alert("No CVE_ID values found in the CSV (need a 'CVE_ID' column).");
+      return;
+    }
+    if (!API) {
+      alert("VITE_API_URL is not set in your Netlify env.");
+      return;
+    }
+
+    const res = await fetch(`${API}/enrich`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cves }),
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`Backend error ${res.status}: ${t || res.statusText}`);
+    }
+
+    const data = await res.json();
+    const enriched = normalizeRows(data.rows, owner);
     setRows(enriched);
-  };
+  } catch (e) {
+    console.error(e);
+    alert(e.message || "Failed to enrich CVEs from CSV");
+  } finally {
+    if (fileRef.current) fileRef.current.value = ""; // allow re-upload same file
+  }
+};
+
 
   const totalHigh = useMemo(() => rows.filter((r) => r.Priority_Score >= 0.8).length, [rows]);
 
